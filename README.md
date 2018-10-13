@@ -50,7 +50,7 @@ class Song::Create < Traiblazer::Operation
   end
 end
 
-Song::Create.call(whatever: "", in: "here")
+Song::Create.call(whatever: "goes", in: "here")
 Song::Create.(whatever: "goes", in: "here")
 
 # app/concepts/song/contract/create.rb
@@ -81,6 +81,10 @@ class Song::New < Trailblazer::Operation
   step COntract::Build( constant: Song:Contract::Create )
 end
 
+resule = Song::New.()
+result["model"]
+result["contract.default"]
+
 class Song::ValidateOnly < Trailblazer::Operation
   step Model( Song, :new )
   step Contract::Build( constant: Song::Contract::Create)
@@ -101,50 +105,70 @@ class Song::Create < Traiblazer::Operation
   step Contract::Validate( key: "song" )
   step Contract::Persist( )
 end
-reulst = Song::Create.()
+reulst = Song::Create.({ "song" => { title: "Rising Force", length: 13 } })
 result.success? # => true
-result = Song::Create.()
+result = Song::Create.({ title: "Rising Force", length: 13 })
 result.success? # => false
 
 class Song::Create < Trailblazer::Operation
   step Model( Song, :new )
-  step Contract::Build()
+  step Contract::Build( constant: Song::Contract::Create )
   step Contract::Validate()
   step Contract::Persist()
 end
-result = Song::Create.( title: "", length: 13 )
+result = Song::Create.( title: "Rising Force", length: 13 )
 result.success? # => true
-result[] # => #<>
+result["model"] # => #<>
 
 step Persist( method: :sync )
 
 class Song::Create < trailblazer::Operation
+  step Model( Song, :new )
+  step Contract::Build( name: "form", constant: Song::Contract::Create )
+  step Contract::Validate( name: "form" )
+  step Contract::Persist( name: "form" )
 end
 
-result = Song::Create.({})
-result[].errors.message # =>
-result = Create.()
-result[].success? # =>
-result[].errors # =>
-result[].errors.messages # =>
+result = Song::Create.({ title: "A" })
+result[].errors.message # => {:title=>["is too short (minimum is 2 ch...)"]}
+result = Create.({ length: "A" })
+result["result.contract.default"].success? # => false
+result["result.contract.default"].errors # => Errors object
+result["result.contract.default"].errors.messages # => {:length=>["is not a number"]}
 
 class Song < ActiveRecord::Base
+  belongs_to :thing
+  scope :latest, lambda { all.limit(9).order("id DESC") }
 end
 
 class Song::Policy
+  def initialize(user, song)
+    @user, @song = user, song
+  end
+  def create?
+    @user.admin?
+  end
 end
 
 class Song::Create < Trailblazer::Operation
+  step Policy( Song::Policy, :create? )
 end
 
 class SongsController < ApplicationController
+  def new
+    form Song::Create
+  end
 end
 
 class Song::Create < Trailblazer::Operation
+  representer do
+    include Roar::JSON::HAL
+    link(:self) { song_path(represeented.id) }
+  end
 end
 
 describe Song::Update do
-  let(:song){ Song::Create.(  ) }
+  let(:song){ Song::Create.(song: {body: "[That](http://traiblazer.to)!"}) }
 end
 
 
@@ -155,9 +179,9 @@ end
 = simple_form_for @form do |f|
   = f.input :body
 
-gem ""
-gem ""
-gem ""
+gem "traiblazer"
+gem "traiblazer-rails"
+gem "trailblazer-cells"
 ```
 
 
